@@ -1,6 +1,7 @@
 package bonjour
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -70,22 +71,22 @@ func Register(instance, service, domain string, port int, text []string, iface *
 	}
 	entry.HostName = fmt.Sprintf("%s.", trimDot(entry.HostName))
 
-	addrs, err := net.LookupIP(entry.HostName)
+	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		// Try appending the host domain suffix and lookup again
-		// (required for Linux-based hosts)
-		tmpHostName := fmt.Sprintf("%s%s.", entry.HostName, entry.Domain)
-		addrs, err = net.LookupIP(tmpHostName)
-		if err != nil {
-			return nil, fmt.Errorf("Could not determine host IP addresses for %s", entry.HostName)
+		return nil, fmt.Errorf("Could not determine host IP addresses for %s", entry.HostName)
+	}
+
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				entry.AddrIPv4 = ipnet.IP
+				break
+			}
 		}
 	}
-	for i := 0; i < len(addrs); i++ {
-		if ipv4 := addrs[i].To4(); ipv4 != nil {
-			entry.AddrIPv4 = addrs[i]
-		} else if ipv6 := addrs[i].To16(); ipv6 != nil {
-			entry.AddrIPv6 = addrs[i]
-		}
+	if entry.AddrIPv4 == nil {
+		return nil, errors.New("unable to determine host IP")
 	}
 
 	s, err := newServer(iface)
