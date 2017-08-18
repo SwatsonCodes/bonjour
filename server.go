@@ -274,7 +274,7 @@ func (s *Server) recv(c *net.UDPConn) {
 			continue
 		}
 		if err := s.parsePacket(buf[:n], from); err != nil {
-			log.Printf("[ERR] bonjour: Failed to handle query: %v", err)
+			continue
 		}
 	}
 }
@@ -283,7 +283,6 @@ func (s *Server) recv(c *net.UDPConn) {
 func (s *Server) parsePacket(packet []byte, from net.Addr) error {
 	var msg dns.Msg
 	if err := msg.Unpack(packet); err != nil {
-		log.Printf("[ERR] bonjour: Failed to unpack packet: %v", err)
 		return err
 	}
 	return s.handleQuery(&msg, from)
